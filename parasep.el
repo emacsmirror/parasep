@@ -1,9 +1,9 @@
 ;;; parasep.el --- more paragraph separators
 
-;; Copyright 2007, 2008, 2009 Kevin Ryde
+;; Copyright 2007, 2008, 2009, 2010 Kevin Ryde
 
 ;; Author: Kevin Ryde <user42@zip.com.au>
-;; Version: 1
+;; Version: 2
 ;; Keywords: convenience
 ;; URL: http://user42.tuxfamily.org/parasep/index.html
 
@@ -29,7 +29,8 @@
 
 ;;; Emacsen:
 
-;; Designed for Emacs 21 and up, works in XEmacs 21 too.
+;; Designed for Emacs 21 and up, works in XEmacs 21, believe works in Emacs
+;; 20.
 
 ;;; Install:
 
@@ -50,30 +51,57 @@
 ;;; History:
 
 ;; Version 1 - the first version
+;; Version 2 - new parasep-texinfo-@*
+;;           - better check for parts already in regexp
 
 ;;; Code:
+
+(defun parasep-regexp-valid-p (str)
+  "Return non-nil if string STR is a valid regexp."
+  (condition-case nil
+      (progn (string-match str "") t)
+    (invalid-regexp nil)))
+
+(defun parasep-regexp-split (regexp)
+  "Return a list of the toplevel alternates of REGEXP.
+REGEXP is split on top-level \\| so for instance
+\"a\\|\\(b\\|c\\)\" gives a list (\"a\" \"\\(b\\|c\\)\").
+
+If REGEXP is invalid then currently there's no error but there's
+no splitting past the bad point."
+
+  (let* ((ret  (split-string regexp "\\\\|"))
+         (upto ret))
+    (while (cdr upto)
+      (if (parasep-regexp-valid-p (car upto))
+          (setq upto (cdr upto))
+        (setcar upto (concat (car upto) "\\|" (cadr upto)))
+        (setcdr upto (cddr upto))))
+    ret))
+
+(defun parasep-add-to-regexp-var (var regexp)
+  "Add REGEXP to variable VAR if not already present.
+VAR is a symbol, the name of a variable containing a regexp
+string.  If REGEXP is not already among the toplevel alternates
+in VAR then it's prepended.
+
+The return is the new value of VAR."
+
+  (let ((old (symbol-value var)))
+    (if (member regexp (parasep-regexp-split old))
+        old
+      (set var (concat regexp "\\|" old)))))
 
 (defun parasep-add (regexp)
   "An internal part of parasep.el.
 Append REGEXP to `paragraph-separate' and `paragraph-start' if
 it's not already present in those variables.
 
-Checking already present means that repeating the parasep
-commands doesn't make the variables ever longer.  The check only
-looks for REGEXP as a substring of the variables, it doesn't
-parse to see it's at the top-level.  As long as REGEXP is unique
-enough that should be fine."
+Checking for already present means that repeating the parasep
+commands doesn't make the variables ever longer."
 
-  (setq regexp (concat "\\|" regexp))
-  (let ((check (concat (regexp-quote regexp)
-                       "\\(\\'\\|\\\\|\\)")) ;; end of string or \|
-        (case-fold-search nil))
-    (unless (string-match check paragraph-separate)
-      (set (make-local-variable 'paragraph-separate)
-           (concat paragraph-separate regexp)))
-    (unless (string-match check paragraph-start)
-      (set (make-local-variable 'paragraph-start)
-           (concat paragraph-start regexp)))))
+  (parasep-add-to-regexp-var (make-local-variable 'paragraph-separate) regexp)
+  (parasep-add-to-regexp-var (make-local-variable 'paragraph-start)    regexp))
 
 
 ;;-----------------------------------------------------------------------------
@@ -158,6 +186,28 @@ between."
   ;; case
   (interactive)
   (parasep-add "=[a-z]"))
+
+;;;###autoload
+(defun parasep-texinfo-@* ()
+  "Make a line with \"@*\" start or separate a paragraph.
+An @* alone on a line is a paragraph separator, an @* at the
+beginning of a non-empty line is the start of a paragraph.
+
+The effect is that paragraph filling won't flow an @* into
+surrounding lines, so the texinfo source keeps a line break
+similar to what @* will produce in the formatted output.
+
+\(As of Emacs 23.1, the default settings have all alphabetical
+@foo commands as paragraph separators, but not @*.)"
+
+  (interactive)
+  (parasep-add-to-regexp-var (make-local-variable 'paragraph-start)
+                             "@\\*\\(\\s-\\|$\\)")
+  (parasep-add-to-regexp-var (make-local-variable 'paragraph-separate)
+                             "@\\*\\s-*$"))
+
+;;;###autoload
+(custom-add-option 'parasep-texinfo-@* 'texinfo-mode-hook)
 
 
 (provide 'parasep)
