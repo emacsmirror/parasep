@@ -3,7 +3,7 @@
 ;; Copyright 2007, 2008, 2009, 2010 Kevin Ryde
 
 ;; Author: Kevin Ryde <user42@zip.com.au>
-;; Version: 2
+;; Version: 3
 ;; Keywords: convenience
 ;; URL: http://user42.tuxfamily.org/parasep/index.html
 
@@ -53,6 +53,7 @@
 ;; Version 1 - the first version
 ;; Version 2 - new parasep-texinfo-@*
 ;;           - better check for parts already in regexp
+;; Version 3 - correction to custom-add-option
 
 ;;; Code:
 
@@ -78,6 +79,7 @@ no splitting past the bad point."
         (setcar upto (concat (car upto) "\\|" (cadr upto)))
         (setcdr upto (cddr upto))))
     ret))
+(put 'parasep-regexp-split 'pure t)
 
 (defun parasep-add-to-regexp-var (var regexp)
   "Add REGEXP to variable VAR if not already present.
@@ -207,7 +209,7 @@ similar to what @* will produce in the formatted output.
                              "@\\*\\s-*$"))
 
 ;;;###autoload
-(custom-add-option 'parasep-texinfo-@* 'texinfo-mode-hook)
+(custom-add-option 'texinfo-mode-hook 'parasep-texinfo-@*)
 
 
 (provide 'parasep)
