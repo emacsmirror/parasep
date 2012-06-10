@@ -1,10 +1,10 @@
 ;;; parasep.el --- more paragraph separators
 
-;; Copyright 2007, 2008, 2009, 2010 Kevin Ryde
+;; Copyright 2007, 2008, 2009, 2010, 2011, 2012 Kevin Ryde
 
 ;; Author: Kevin Ryde <user42@zip.com.au>
-;; Version: 3
-;; Keywords: convenience
+;; Version: 4
+;; Keywords: convenience, paragraphs
 ;; URL: http://user42.tuxfamily.org/parasep/index.html
 
 ;; parasep.el is free software; you can redistribute it and/or modify
@@ -22,10 +22,17 @@
 
 ;;; Commentary:
 
-;; These few functions add further paragraph separators to
-;; `paragraph-separate' and `paragraph-start'.  The functions are designed
-;; to be used either from a mode hook or interactively for occasional
-;; changes.
+;; This is a few functions to add further paragraph separators to the
+;; `paragraph-separate' and `paragraph-start' variables.
+;;
+;;     parasep-dashes          line of --- dashes separator
+;;     parasep-empty-comments  empty comments separator
+;;     parasep-perl-pod        pod =foo command separators
+;;     parasep-perl-pod-X      X<> index directive separator
+;;     parasep-texinfo-@*      @* line break separator
+;;
+;; The functions are designed to be used either from a mode hook, or
+;; M-x interactively for an occasional change.
 
 ;;; Emacsen:
 
@@ -54,6 +61,7 @@
 ;; Version 2 - new parasep-texinfo-@*
 ;;           - better check for parts already in regexp
 ;; Version 3 - correction to custom-add-option
+;; Version 4 - new parasep-perl-pod-X
 
 ;;; Code:
 
@@ -79,10 +87,9 @@ no splitting past the bad point."
         (setcar upto (concat (car upto) "\\|" (cadr upto)))
         (setcdr upto (cddr upto))))
     ret))
-(put 'parasep-regexp-split 'pure t)
 
 (defun parasep-add-to-regexp-var (var regexp)
-  "Add REGEXP to variable VAR if not already present.
+  "Extend regexp variable VAR to match REGEXP too.
 VAR is a symbol, the name of a variable containing a regexp
 string.  If REGEXP is not already among the toplevel alternates
 in VAR then it's prepended.
@@ -149,6 +156,8 @@ future this may have to be a bit tighter."
 ;;                  "[ \t]*\\)?")))
 ;; "$"
 
+;;-----------------------------------------------------------------------------
+
 ;;;###autoload
 (defun parasep-empty-comments ()
   "Make an empty comment line a paragraph separator.
@@ -171,6 +180,8 @@ nothing."
   (if (not (member comment-start-skip '(nil "")))
       (parasep-add (concat "\\(" comment-start-skip "\\)[ \t]*$"))))
 
+;;-----------------------------------------------------------------------------
+
 ;;;###autoload
 (defun parasep-perl-pod ()
   "Make POD =foo directives a paragraph separator.
@@ -188,6 +199,61 @@ between."
   ;; case
   (interactive)
   (parasep-add "=[a-z]"))
+
+;;;###autoload
+(custom-add-option 'perl-mode-hook 'parasep-perl-pod)
+;;;###autoload
+(custom-add-option 'cperl-mode-hook 'parasep-perl-pod)
+;;;###autoload
+(custom-add-option 'pod-mode-hook 'parasep-perl-pod)
+
+;;-----------------------------------------------------------------------------
+
+;;;###autoload
+(defun parasep-perl-pod-X ()
+  "Have POD X<> index directives as paragraph separators.
+This is designed for X<> directives on a line by themselves
+either at the start or end of a paragraph.
+
+    X<blah>                  <-- separator
+    Something about blah.
+
+    Foo bar quux.
+    X<foo> X<bar>            <-- separator
+
+Making X<> a paragraph separator stops `fill-paragraph'
+\(\\[fill-paragraph]) flowing it into the paragraph text.
+Paragraph movement commands will skip them too, which may or may
+not be good.
+
+There can be multiple X<> on the line as shown above, but the X<>
+cannot extend across multiple lines since Emacs
+`paragraph-separate' scheme isn't designed for that..  It's
+unlikely an X<> entry would be longer than a single line.
+
+    X<This is a multi      <-- not a separator
+    line index entry>
+
+A line with plain text after the X<> is not a separator.  This
+means you can sometimes write X<> on a line alone and sometimes
+together with the text and the style written is preserved.
+
+    X<foo> Some thing      <-- not a separator
+    blah blah."
+
+  (interactive)
+  (require 'parasep)
+  (parasep-add "\\(X<[^>\n]*>\\s-*\\)+$"))
+
+;;;###autoload
+(custom-add-option 'perl-mode-hook 'parasep-perl-pod-X)
+;;;###autoload
+(custom-add-option 'cperl-mode-hook 'parasep-perl-pod-X)
+;;;###autoload
+(custom-add-option 'pod-mode-hook 'parasep-perl-pod-X)
+
+
+;;-----------------------------------------------------------------------------
 
 ;;;###autoload
 (defun parasep-texinfo-@* ()
@@ -211,6 +277,9 @@ similar to what @* will produce in the formatted output.
 ;;;###autoload
 (custom-add-option 'texinfo-mode-hook 'parasep-texinfo-@*)
 
+;;-----------------------------------------------------------------------------
+
+;; LocalWords: texinfo parasep toplevel prepended el Gtk CodeGen apidoc func quux multi
 
 (provide 'parasep)
 
