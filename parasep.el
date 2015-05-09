@@ -1,9 +1,9 @@
 ;;; parasep.el --- more paragraph separators
 
-;; Copyright 2007, 2008, 2009, 2010, 2011, 2012 Kevin Ryde
+;; Copyright 2007, 2008, 2009, 2010, 2011, 2012, 2015 Kevin Ryde
 
-;; Author: Kevin Ryde <user42@zip.com.au>
-;; Version: 4
+;; Author: Kevin Ryde <user42_kevin@yahoo.com.au>
+;; Version: 5
 ;; Keywords: convenience, paragraphs
 ;; URL: http://user42.tuxfamily.org/parasep/index.html
 
@@ -62,6 +62,7 @@
 ;;           - better check for parts already in regexp
 ;; Version 3 - correction to custom-add-option
 ;; Version 4 - new parasep-perl-pod-X
+;; Version 5 - new email
 
 ;;; Code:
 
@@ -73,8 +74,8 @@
 
 (defun parasep-regexp-split (regexp)
   "Return a list of the toplevel alternates of REGEXP.
-REGEXP is split on top-level \\| so for instance
-\"a\\|\\(b\\|c\\)\" gives a list (\"a\" \"\\(b\\|c\\)\").
+REGEXP is split on top-level \\=\\| so for instance
+\"a\\=\\|\\=\\(b\\=\\|c\\=\\)\" gives a list (\"a\" \"\\=\\(b\\=\\|c\\=\\)\").
 
 If REGEXP is invalid then currently there's no error but there's
 no splitting past the bad point."
@@ -119,7 +120,7 @@ commands doesn't make the variables ever longer."
 (defun parasep-dashes ()
   "Make a line of ---- dashes a paragraph separator.
 `paragraph-start' and `paragraph-separate' are extended so that a
-line of dashes a separator.
+line of dashes is a separator.
 
     -------------
 
@@ -135,8 +136,8 @@ future this may have to be a bit tighter."
 
   (interactive)
   (parasep-add (concat
-                (if (not (member comment-start-skip '(nil "")))
-                    (concat "\\(\\(" comment-start-skip "\\)[ \t]*\\)?"))
+                (unless (member comment-start-skip '(nil ""))
+                  (concat "\\(\\(" comment-start-skip "\\)[ \t]*\\)?"))
                 "----+[ \t]*")))
 
 ;; Don't think need to insist that the dashes run to the end-of-line (with
@@ -177,8 +178,8 @@ or empty then there's no comment syntax and this function does
 nothing."
 
   (interactive)
-  (if (not (member comment-start-skip '(nil "")))
-      (parasep-add (concat "\\(" comment-start-skip "\\)[ \t]*$"))))
+  (unless (member comment-start-skip '(nil ""))
+    (parasep-add (concat "\\(" comment-start-skip "\\)[ \t]*$"))))
 
 ;;-----------------------------------------------------------------------------
 
@@ -228,7 +229,7 @@ not be good.
 
 There can be multiple X<> on the line as shown above, but the X<>
 cannot extend across multiple lines since Emacs
-`paragraph-separate' scheme isn't designed for that..  It's
+`paragraph-separate' mechanism isn't designed for that..  It's
 unlikely an X<> entry would be longer than a single line.
 
     X<This is a multi      <-- not a separator
@@ -279,7 +280,8 @@ similar to what @* will produce in the formatted output.
 
 ;;-----------------------------------------------------------------------------
 
-;; LocalWords: texinfo parasep toplevel prepended el Gtk CodeGen apidoc func quux multi
+;; LocalWords: texinfo parasep toplevel prepended el Gtk CodeGen apidoc func
+;; LocalWords: foo quux multi
 
 (provide 'parasep)
 
